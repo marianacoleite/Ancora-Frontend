@@ -129,7 +129,7 @@ export function AppShell() {
 
       <main
         className={cn(
-          'min-h-dvh min-w-0 overflow-x-hidden transition-[padding] duration-300 ease-out max-md:pl-0',
+          'min-h-dvh min-w-0 transition-[padding] duration-300 ease-out max-md:pl-0',
           collapsed ? 'md:pl-[72px]' : 'md:pl-[260px]',
         )}
       >

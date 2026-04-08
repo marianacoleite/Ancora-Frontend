@@ -55,7 +55,7 @@ export function TopNavbar({
             type="button"
             onClick={toggle}
             className={cn(
-              'inline-flex h-10 w-10 items-center justify-center rounded-2xl border border-subtle surface-card shadow-soft transition-transform hover:scale-[1.02]',
+              'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-subtle surface-card shadow-soft transition-transform hover:scale-[1.02]',
             )}
             title={theme === 'dark' ? 'Modo claro' : 'Modo escuro'}
           >

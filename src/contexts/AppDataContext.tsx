@@ -302,6 +302,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
           ...secs.map((s) => fsDeleteSection(s.id)),
           fsDeleteSubspace(id),
         ])
+        toast.success('Subespaço removido')
         return
       }
       withLocal((prev) => cascadeDeleteSubspace(prev, id))

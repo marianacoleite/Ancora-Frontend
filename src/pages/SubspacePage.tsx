@@ -6,13 +6,7 @@ import {
   useSensors,
 } from '@dnd-kit/core'
 import { motion } from 'framer-motion'
-import {
-  Kanban,
-  LayoutList,
-  Layers,
-  Plus,
-  Sparkles,
-} from 'lucide-react'
+import { Kanban, LayoutList, Layers, Plus, Sparkles, Trash2 } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useOutletContext, useParams, NavLink } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -59,6 +53,7 @@ export function SubspacePage() {
     deleteTask,
     moveTaskToSection,
     addSubspace,
+    deleteSubspace,
   } = useAppData()
 
   const [search, setSearch] = useState('')
@@ -67,6 +62,7 @@ export function SubspacePage() {
   const [taskModal, setTaskModal] = useState(false)
   const [sectionModal, setSectionModal] = useState(false)
   const [subModal, setSubModal] = useState(false)
+  const [deleteSubModal, setDeleteSubModal] = useState(false)
 
   const [taskTitle, setTaskTitle] = useState('')
   const [taskStatus, setTaskStatus] = useState<TaskStatus>('pending')
@@ -185,9 +181,25 @@ export function SubspacePage() {
     .filter((s) => s.workspaceId === workspaceId)
     .sort((a, b) => a.order - b.order)
 
+  const handleDeleteSubspace = async () => {
+    if (!subspaceId || !workspaceId) return
+    const others = subsInWs.filter((s) => s.id !== subspaceId)
+    try {
+      await deleteSubspace(subspaceId)
+      setDeleteSubModal(false)
+      if (others.length > 0) {
+        navigate(`/w/${workspaceId}/s/${others[0].id}`, { replace: true })
+      } else {
+        navigate(`/w/${workspaceId}`, { replace: true })
+      }
+    } catch {
+      toast.error('Não foi possível excluir o subespaço')
+    }
+  }
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-      <div className="min-h-dvh w-full min-w-0 overflow-x-hidden surface-page">
+      <div className="min-h-dvh w-full min-w-0 surface-page">
         <TopNavbar
           workspaceName={workspace.name}
           subspaceName={subspace.name}
@@ -197,43 +209,57 @@ export function SubspacePage() {
         />
 
         <div className="px-4 pt-2 md:px-10">
-          <div className="flex gap-1.5 overflow-x-auto pb-3.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {subsInWs.map((s) => (
-              <NavLink
-                key={s.id}
-                to={`/w/${workspaceId}/s/${s.id}`}
-                onClick={() => ctx?.closeMobileSidebar?.()}
-                className={({ isActive }) =>
-                  cn(
-                    'inline-flex items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-primary/12 text-primary'
-                      : 'text-secondary-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
-                  )
-                }
+          <div className="flex min-w-0 items-center gap-2 pb-3.5">
+            <div className="flex min-w-0 flex-1 gap-1.5 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {subsInWs.map((s) => (
+                <NavLink
+                  key={s.id}
+                  to={`/w/${workspaceId}/s/${s.id}`}
+                  onClick={() => ctx?.closeMobileSidebar?.()}
+                  className={({ isActive }) =>
+                    cn(
+                      'inline-flex shrink-0 items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+                      isActive
+                        ? 'bg-primary/12 text-primary'
+                        : 'text-secondary-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+                    )
+                  }
+                >
+                  {s.name}
+                </NavLink>
+              ))}
+              <button
+                type="button"
+                onClick={() => setSubModal(true)}
+                className="inline-flex shrink-0 items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
               >
-                {s.name}
-              </NavLink>
-            ))}
+                <Plus className="h-4 w-4" />
+                Subespaço
+              </button>
+            </div>
             <button
               type="button"
-              onClick={() => setSubModal(true)}
-              className="inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10"
+              onClick={() => setDeleteSubModal(true)}
+              className={cn(
+                'inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-red-500/25 bg-red-500/[0.06] px-3 text-sm font-medium text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-400',
+              )}
+              title="Excluir este subespaço"
+              aria-label="Excluir subespaço"
             >
-              <Plus className="h-4 w-4" />
-              Subespaço
+              <Trash2 className="h-4 w-4 shrink-0" />
+              <span className="hidden sm:inline">Excluir</span>
             </button>
           </div>
           <div className="border-t border-subtle" aria-hidden />
         </div>
 
-        <div className="mx-auto w-full max-w-6xl px-4 py-8 md:px-6">
+        <div className="mx-auto w-full min-w-0 max-w-6xl px-4 py-8 md:px-6">
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+            className="mb-8 flex min-w-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
           >
-            <div>
+            <div className="min-w-0 shrink">
               <p className="text-xs font-semibold uppercase tracking-wider text-secondary-ink">
                 Subespaço
               </p>
@@ -244,16 +270,16 @@ export function SubspacePage() {
                 Visualize e organize tarefas por seção. Arraste linhas entre blocos para repriorizar.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="secondary" onClick={() => setSectionModal(true)}>
+            <div className="flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto pb-0.5 [scrollbar-color:var(--border-subtle)_transparent] [scrollbar-width:thin]">
+              <Button type="button" variant="secondary" className="shrink-0" onClick={() => setSectionModal(true)}>
                 <Layers className="h-4 w-4" />
                 Nova seção
               </Button>
-              <Button type="button" onClick={() => setTaskModal(true)}>
+              <Button type="button" className="shrink-0" onClick={() => setTaskModal(true)}>
                 <Plus className="h-4 w-4" />
                 Nova tarefa
               </Button>
-              <div className="flex rounded-2xl border border-subtle bg-[var(--surface-muted)]/50 p-1">
+              <div className="flex shrink-0 rounded-2xl border border-subtle bg-[var(--surface-muted)]/50 p-1">
                 <button
                   type="button"
                   title="Agrupado por seção"
@@ -456,6 +482,26 @@ export function SubspacePage() {
             <Button type="submit">Criar seção</Button>
           </div>
         </form>
+      </Modal>
+
+      <Modal
+        open={deleteSubModal}
+        onClose={() => setDeleteSubModal(false)}
+        title="Excluir subespaço"
+        description={
+          subsInWs.length === 1
+            ? 'Este é o único subespaço deste workspace. Todas as seções e tarefas serão removidas permanentemente.'
+            : 'Todas as seções e tarefas deste subespaço serão removidas permanentemente. Esta ação não pode ser desfeita.'
+        }
+      >
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" onClick={() => setDeleteSubModal(false)}>
+            Cancelar
+          </Button>
+          <Button type="button" variant="danger" onClick={() => void handleDeleteSubspace()}>
+            Excluir
+          </Button>
+        </div>
       </Modal>
 
       <Modal open={subModal} onClose={() => setSubModal(false)} title="Novo subespaço">

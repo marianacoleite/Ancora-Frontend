@@ -8,7 +8,7 @@ export function TasksTableShell({
   showSectionColumn?: boolean
 }) {
   return (
-    <div className="overflow-x-auto rounded-2xl border border-subtle surface-card shadow-soft">
+    <div className="w-full min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-2xl border border-subtle surface-card shadow-soft [scrollbar-color:var(--border-subtle)_transparent] [scrollbar-width:thin]">
       <table className="w-full min-w-[720px] border-collapse text-left text-sm">
         <thead>
           <tr className="border-b border-subtle bg-[var(--surface-muted)]/60 text-xs font-semibold uppercase tracking-wide text-secondary-ink">
