@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useAppData } from '../../contexts/AppDataContext'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -18,9 +18,10 @@ export type AppShellOutletContext = {
 }
 
 export function AppShell() {
-  const { data, loading, addWorkspace } = useAppData()
+  const { data, loading, addWorkspace, deleteWorkspace } = useAppData()
   const { user } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceModal, setWorkspaceModal] = useState(false)
@@ -102,6 +103,21 @@ export function AppShell() {
     closeMobileSidebar: () => setMobileOpen(false),
   }
 
+  async function handleDeleteWorkspace(id: string) {
+    const others = workspaces.filter((w) => w.id !== id)
+    const wasViewing =
+      location.pathname === `/w/${id}` || location.pathname.startsWith(`/w/${id}/`)
+    await deleteWorkspace(id)
+    if (!wasViewing) return
+    if (others.length === 0) {
+      navigate('/', { replace: true })
+      return
+    }
+    const w = others[0]
+    const sub = data?.subspaces.find((s) => s.workspaceId === w.id)
+    navigate(sub ? `/w/${w.id}/s/${sub.id}` : `/w/${w.id}`, { replace: true })
+  }
+
   return (
     <div className="min-h-dvh surface-page">
       <Sidebar
@@ -109,6 +125,7 @@ export function AppShell() {
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
         onNewWorkspace={() => setWorkspaceModal(true)}
+        onDeleteWorkspace={handleDeleteWorkspace}
         mobileOpen={mobileOpen}
         onNavigate={() => setMobileOpen(false)}
       />

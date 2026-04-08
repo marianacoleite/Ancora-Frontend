@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import { ChevronLeft, Copy, LayoutGrid, LogOut, Plus, Sparkles, UserPlus } from 'lucide-react'
+import { ChevronLeft, Copy, LayoutGrid, LogOut, Plus, Sparkles, Trash2, UserPlus } from 'lucide-react'
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
 import { cn } from '../../lib/utils'
@@ -15,6 +15,7 @@ type SidebarProps = {
   collapsed: boolean
   onToggleCollapse: () => void
   onNewWorkspace: () => void
+  onDeleteWorkspace?: (id: string) => void | Promise<void>
   mobileOpen?: boolean
   onNavigate?: () => void
 }
@@ -24,12 +25,15 @@ export function Sidebar({
   collapsed,
   onToggleCollapse,
   onNewWorkspace,
+  onDeleteWorkspace,
   mobileOpen = true,
   onNavigate,
 }: SidebarProps) {
   const { user, logout, mode } = useAuth()
+  const location = useLocation()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [workspacePendingDelete, setWorkspacePendingDelete] = useState<Workspace | null>(null)
 
   function copyAppLink() {
     const url = window.location.origin
@@ -79,25 +83,54 @@ export function Sidebar({
           >
             Workspaces
           </p>
-          {workspaces.map((w) => (
-            <NavLink
-              key={w.id}
-              to={`/w/${w.id}`}
-              title={w.name}
-              onClick={() => onNavigate?.()}
-              className={({ isActive }) =>
-                cn(
-                  'group flex items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors',
+          {workspaces.map((w) => {
+            const isActive =
+              location.pathname === `/w/${w.id}` || location.pathname.startsWith(`/w/${w.id}/`)
+            return (
+              <div
+                key={w.id}
+                className={cn(
+                  'flex min-w-0 items-center gap-0.5 rounded-2xl',
                   isActive
-                    ? 'bg-primary/12 text-primary'
+                    ? 'bg-primary/12'
                     : 'text-secondary-ink hover:bg-black/[0.04] hover:text-primary-ink dark:hover:bg-white/[0.06]',
-                )
-              }
-            >
-              <LayoutGrid className="h-4 w-4 shrink-0 opacity-80" />
-              {!collapsed && <span className="truncate">{w.name}</span>}
-            </NavLink>
-          ))}
+                )}
+              >
+                <NavLink
+                  to={`/w/${w.id}`}
+                  title={w.name}
+                  onClick={() => onNavigate?.()}
+                  className={cn(
+                    'group flex min-w-0 flex-1 items-center gap-3 rounded-2xl px-3 py-2.5 text-sm font-medium transition-colors',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-secondary-ink hover:text-primary-ink',
+                  )}
+                >
+                  <LayoutGrid className="h-4 w-4 shrink-0 opacity-80" />
+                  {!collapsed && <span className="truncate">{w.name}</span>}
+                </NavLink>
+                {!collapsed && onDeleteWorkspace && (
+                  <button
+                    type="button"
+                    title="Excluir workspace"
+                    aria-label={`Excluir workspace ${w.name}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setWorkspacePendingDelete(w)
+                    }}
+                    className={cn(
+                      'mr-1.5 shrink-0 rounded-xl p-2 text-secondary-ink opacity-70 transition-opacity hover:bg-red-500/10 hover:text-red-600 hover:opacity-100 dark:hover:text-red-400',
+                      isActive && 'text-primary opacity-90',
+                    )}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div className="shrink-0 space-y-2 border-t border-subtle p-2">
@@ -151,6 +184,36 @@ export function Sidebar({
           </button>
         </div>
       </motion.aside>
+
+      <Modal
+        open={workspacePendingDelete !== null}
+        onClose={() => setWorkspacePendingDelete(null)}
+        title="Excluir workspace?"
+        description={
+          workspacePendingDelete
+            ? `“${workspacePendingDelete.name}” e todos os subespaços, seções e tarefas serão removidos permanentemente.`
+            : undefined
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setWorkspacePendingDelete(null)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={() => {
+                const id = workspacePendingDelete?.id
+                if (!id) return
+                void Promise.resolve(onDeleteWorkspace?.(id)).finally(() => setWorkspacePendingDelete(null))
+              }}
+            >
+              Excluir
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={inviteOpen}
