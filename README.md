@@ -39,7 +39,7 @@
 
 ```bash
 git clone <url-do-repositório>
-cd Lampiao-Frontend
+cd Ancora-Frontend
 npm install
 ```
 
