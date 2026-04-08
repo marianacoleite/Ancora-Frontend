@@ -1,5 +1,15 @@
 import { motion } from 'framer-motion'
-import { ChevronLeft, Copy, LayoutGrid, LogOut, Plus, Sparkles, Trash2, UserPlus } from 'lucide-react'
+import {
+  ChevronLeft,
+  Copy,
+  LayoutGrid,
+  LogOut,
+  Pencil,
+  Plus,
+  Sparkles,
+  Trash2,
+  UserPlus,
+} from 'lucide-react'
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -16,6 +26,7 @@ type SidebarProps = {
   onToggleCollapse: () => void
   onNewWorkspace: () => void
   onDeleteWorkspace?: (id: string) => void | Promise<void>
+  onRenameWorkspace?: (id: string, name: string) => void | Promise<void>
   mobileOpen?: boolean
   onNavigate?: () => void
 }
@@ -26,6 +37,7 @@ export function Sidebar({
   onToggleCollapse,
   onNewWorkspace,
   onDeleteWorkspace,
+  onRenameWorkspace,
   mobileOpen = true,
   onNavigate,
 }: SidebarProps) {
@@ -34,6 +46,8 @@ export function Sidebar({
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [workspacePendingDelete, setWorkspacePendingDelete] = useState<Workspace | null>(null)
+  const [workspacePendingRename, setWorkspacePendingRename] = useState<Workspace | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
   function copyAppLink() {
     const url = window.location.origin
@@ -81,7 +95,7 @@ export function Sidebar({
               collapsed && 'sr-only',
             )}
           >
-            Workspaces
+            Espaços
           </p>
           {workspaces.map((w) => {
             const isActive =
@@ -110,23 +124,46 @@ export function Sidebar({
                   <LayoutGrid className="h-4 w-4 shrink-0 opacity-80" />
                   {!collapsed && <span className="truncate">{w.name}</span>}
                 </NavLink>
-                {!collapsed && onDeleteWorkspace && (
-                  <button
-                    type="button"
-                    title="Excluir workspace"
-                    aria-label={`Excluir workspace ${w.name}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setWorkspacePendingDelete(w)
-                    }}
-                    className={cn(
-                      'mr-1.5 shrink-0 rounded-xl p-2 text-secondary-ink opacity-70 transition-opacity hover:bg-red-500/10 hover:text-red-600 hover:opacity-100 dark:hover:text-red-400',
-                      isActive && 'text-primary opacity-90',
+                {!collapsed && (onRenameWorkspace || onDeleteWorkspace) && (
+                  <div className="mr-0.5 flex shrink-0 items-center gap-0.5">
+                    {onRenameWorkspace && (
+                      <button
+                        type="button"
+                        title="Renomear espaço"
+                        aria-label={`Renomear espaço ${w.name}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setRenameDraft(w.name)
+                          setWorkspacePendingRename(w)
+                        }}
+                        className={cn(
+                          'rounded-xl p-2 text-secondary-ink opacity-70 transition-opacity hover:bg-black/[0.06] hover:text-primary-ink hover:opacity-100 dark:hover:bg-white/[0.08]',
+                          isActive && 'text-primary opacity-90',
+                        )}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                     )}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                    {onDeleteWorkspace && (
+                      <button
+                        type="button"
+                        title="Excluir espaço"
+                        aria-label={`Excluir espaço ${w.name}`}
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setWorkspacePendingDelete(w)
+                        }}
+                        className={cn(
+                          'rounded-xl p-2 text-secondary-ink opacity-70 transition-opacity hover:bg-red-500/10 hover:text-red-600 hover:opacity-100 dark:hover:text-red-400',
+                          isActive && 'text-primary opacity-90',
+                        )}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             )
@@ -139,10 +176,10 @@ export function Sidebar({
             variant="secondary"
             className="w-full justify-start gap-2"
             onClick={onNewWorkspace}
-            title="Novo workspace"
+            title="Novo espaço"
           >
             <Plus className="h-4 w-4 shrink-0" />
-            {!collapsed && <span>Novo workspace</span>}
+            {!collapsed && <span>Novo espaço</span>}
           </Button>
           <Button
             type="button"
@@ -188,7 +225,7 @@ export function Sidebar({
       <Modal
         open={workspacePendingDelete !== null}
         onClose={() => setWorkspacePendingDelete(null)}
-        title="Excluir workspace?"
+        title="Excluir espaço?"
         description={
           workspacePendingDelete
             ? `“${workspacePendingDelete.name}” e todos os subespaços, seções e tarefas serão removidos permanentemente.`
@@ -216,6 +253,42 @@ export function Sidebar({
       </Modal>
 
       <Modal
+        open={workspacePendingRename !== null}
+        onClose={() => setWorkspacePendingRename(null)}
+        title="Renomear espaço"
+        description="O novo nome aparece na barra lateral e no topo da página."
+      >
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            const id = workspacePendingRename?.id
+            const trimmed = renameDraft.trim()
+            if (!id || !trimmed) return
+            void Promise.resolve(onRenameWorkspace?.(id, trimmed)).finally(() =>
+              setWorkspacePendingRename(null),
+            )
+          }}
+        >
+          <Input
+            autoFocus
+            value={renameDraft}
+            onChange={(e) => setRenameDraft(e.target.value)}
+            placeholder="Nome do espaço"
+            aria-label="Novo nome do espaço"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+            <Button type="button" variant="secondary" onClick={() => setWorkspacePendingRename(null)}>
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={!renameDraft.trim()}>
+              Salvar
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         title="Convidar pessoas"
@@ -230,7 +303,7 @@ export function Sidebar({
           />
           <p className="text-xs text-secondary-ink">
             Por enquanto, convide enviando o endereço do app. Em seguida poderemos enviar convites por
-            e-mail com permissões por workspace.
+            e-mail com permissões por espaço.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button type="button" variant="secondary" onClick={() => setInviteOpen(false)}>

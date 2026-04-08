@@ -54,6 +54,7 @@ export function SubspacePage() {
     moveTaskToSection,
     addSubspace,
     deleteSubspace,
+    renameWorkspace,
   } = useAppData()
 
   const [search, setSearch] = useState('')
@@ -206,6 +207,7 @@ export function SubspacePage() {
           onOpenMobileSidebar={ctx?.openMobileSidebar}
           searchQuery={search}
           onSearchChange={setSearch}
+          onRenameWorkspace={(name) => renameWorkspace(workspaceId, name)}
         />
 
         <div className="px-4 pt-2 md:px-10">
@@ -490,7 +492,7 @@ export function SubspacePage() {
         title="Excluir subespaço"
         description={
           subsInWs.length === 1
-            ? 'Este é o único subespaço deste workspace. Todas as seções e tarefas serão removidas permanentemente.'
+            ? 'Este é o único subespaço deste espaço. Todas as seções e tarefas serão removidas permanentemente.'
             : 'Todas as seções e tarefas deste subespaço serão removidas permanentemente. Esta ação não pode ser desfeita.'
         }
       >

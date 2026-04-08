@@ -1,5 +1,5 @@
-import { FolderOpen, Moon, PanelLeft, Plus, Sparkles, Sun } from 'lucide-react'
-import { useState } from 'react'
+import { FolderOpen, Moon, PanelLeft, Pencil, Plus, Sparkles, Sun } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Navigate, useNavigate, useOutletContext, useParams } from 'react-router-dom'
 import type { AppShellOutletContext } from '../components/layout/AppShell'
 import { Button } from '../components/ui/Button'
@@ -14,10 +14,26 @@ export function WorkspaceRedirect() {
   const { workspaceId } = useParams()
   const navigate = useNavigate()
   const ctx = useOutletContext<AppShellOutletContext>()
-  const { data, loading, addSubspace } = useAppData()
+  const { data, loading, addSubspace, renameWorkspace } = useAppData()
   const { theme, toggle } = useTheme()
   const [modalOpen, setModalOpen] = useState(false)
   const [name, setName] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  const workspace = useMemo(
+    () => (data && workspaceId ? data.workspaces.find((w) => w.id === workspaceId) : undefined),
+    [data, workspaceId],
+  )
+
+  useEffect(() => {
+    if (workspace && !editing) setDraft(workspace.name)
+  }, [workspace, workspace?.name, editing])
+
+  useEffect(() => {
+    if (editing) nameInputRef.current?.focus()
+  }, [editing])
 
   if (loading || !data || !workspaceId) {
     return (
@@ -27,7 +43,6 @@ export function WorkspaceRedirect() {
     )
   }
 
-  const workspace = data.workspaces.find((w) => w.id === workspaceId)
   const subs = data.subspaces
     .filter((s) => s.workspaceId === workspaceId)
     .sort((a, b) => a.order - b.order)
@@ -40,7 +55,7 @@ export function WorkspaceRedirect() {
   if (!workspace) {
     return (
       <div className="flex min-h-dvh items-center justify-center px-6 text-center text-secondary-ink">
-        Workspace não encontrado.
+        Espaço não encontrado.
       </div>
     )
   }
@@ -58,7 +73,64 @@ export function WorkspaceRedirect() {
             <PanelLeft className="h-5 w-5" />
           </button>
           <div className="min-w-0">
-            <p className="truncate text-sm font-medium text-primary-ink">{workspace.name}</p>
+            {editing ? (
+              <input
+                ref={nameInputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={async () => {
+                  const t = draft.trim()
+                  if (!t || t === workspace.name) {
+                    setDraft(workspace.name)
+                    setEditing(false)
+                    return
+                  }
+                  await renameWorkspace(workspaceId, t)
+                  setEditing(false)
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    void (async () => {
+                      const t = draft.trim()
+                      if (!t) {
+                        setDraft(workspace.name)
+                        setEditing(false)
+                        return
+                      }
+                      if (t !== workspace.name) await renameWorkspace(workspaceId, t)
+                      setEditing(false)
+                    })()
+                  }
+                  if (e.key === 'Escape') {
+                    setDraft(workspace.name)
+                    setEditing(false)
+                  }
+                }}
+                className="w-full max-w-[min(100%,16rem)] rounded-xl border border-subtle bg-[var(--surface-card)] px-3 py-1.5 text-sm font-medium text-primary-ink shadow-inner focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/25"
+                aria-label="Nome do espaço"
+              />
+            ) : (
+              <div className="flex min-w-0 items-center gap-1">
+                <button
+                  type="button"
+                  className="truncate text-left text-sm font-medium text-primary-ink hover:opacity-80"
+                  title="Editar nome do espaço"
+                  onClick={() => setEditing(true)}
+                >
+                  {workspace.name}
+                </button>
+                <button
+                  type="button"
+                  className="shrink-0 rounded-lg p-1 text-secondary-ink hover:bg-black/[0.04] hover:text-primary-ink dark:hover:bg-white/[0.06]"
+                  title="Editar nome do espaço"
+                  aria-label="Editar nome do espaço"
+                  onClick={() => setEditing(true)}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
             <p className="text-xs text-secondary-ink">Sem subespaços ainda</p>
           </div>
         </div>
@@ -84,8 +156,8 @@ export function WorkspaceRedirect() {
           Crie o primeiro subespaço
         </h1>
         <p className="mt-3 max-w-md text-sm leading-relaxed text-secondary-ink">
-          Cada workspace precisa de pelo menos um subespaço (ex.: Backend, Sprint 1). Depois você
-          adiciona seções e tarefas.
+          Cada espaço precisa de pelo menos um subespaço (ex.: Backend, Sprint 1). Depois você adiciona
+          seções e tarefas.
         </p>
         <Button type="button" className="mt-8 gap-2" onClick={() => setModalOpen(true)}>
           <Plus className="h-4 w-4" />

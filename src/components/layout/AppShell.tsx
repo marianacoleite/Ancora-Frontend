@@ -18,7 +18,7 @@ export type AppShellOutletContext = {
 }
 
 export function AppShell() {
-  const { data, loading, addWorkspace, deleteWorkspace } = useAppData()
+  const { data, loading, addWorkspace, deleteWorkspace, renameWorkspace } = useAppData()
   const { user } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -53,19 +53,19 @@ export function AppShell() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-6 surface-page px-6">
         <div className="max-w-md text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-primary-ink">Nenhum workspace</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-primary-ink">Nenhum espaço</h1>
           <p className="mt-2 text-secondary-ink">
-            Crie seu primeiro workspace para organizar subespaços e tarefas.
+            Crie seu primeiro espaço para organizar subespaços e tarefas.
           </p>
         </div>
         <Button type="button" onClick={() => setWorkspaceModal(true)}>
-          Criar workspace
+          Criar espaço
         </Button>
         <Modal
           open={workspaceModal}
           onClose={() => setWorkspaceModal(false)}
-          title="Novo workspace"
-          description="Um workspace agrupa seus projetos e equipes."
+          title="Novo espaço"
+          description="Um espaço agrupa seus projetos e equipes."
         >
           <form
             className="flex flex-col gap-4"
@@ -126,6 +126,7 @@ export function AppShell() {
         onToggleCollapse={() => setCollapsed((c) => !c)}
         onNewWorkspace={() => setWorkspaceModal(true)}
         onDeleteWorkspace={handleDeleteWorkspace}
+        onRenameWorkspace={(id, name) => void renameWorkspace(id, name)}
         mobileOpen={mobileOpen}
         onNavigate={() => setMobileOpen(false)}
       />
@@ -156,8 +157,8 @@ export function AppShell() {
       <Modal
         open={workspaceModal}
         onClose={() => setWorkspaceModal(false)}
-        title="Novo workspace"
-        description="Nomeie seu workspace — você pode mudar depois."
+        title="Novo espaço"
+        description="Nomeie seu espaço — você pode mudar depois."
       >
         <form
           className="flex flex-col gap-4"
@@ -171,7 +172,7 @@ export function AppShell() {
         >
           <Input
             autoFocus
-            placeholder="Nome do workspace"
+            placeholder="Nome do espaço"
             value={workspaceName}
             onChange={(e) => setWorkspaceName(e.target.value)}
           />
@@ -179,7 +180,7 @@ export function AppShell() {
             <Button type="button" variant="secondary" onClick={() => setWorkspaceModal(false)}>
               Cancelar
             </Button>
-            <Button type="submit">Criar workspace</Button>
+            <Button type="submit">Criar espaço</Button>
           </div>
         </form>
       </Modal>

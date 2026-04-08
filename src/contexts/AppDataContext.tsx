@@ -172,7 +172,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const ws = createWorkspaceRecord(user.uid, trimmed, order)
         try {
           await fsUpsertWorkspace(ws)
-          toast.success('Workspace criado')
+          toast.success('Espaço criado')
           return ws.id
         } catch (e) {
           toast.error(String(e))
@@ -191,7 +191,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         }
         return { ...prev, workspaces: [...prev.workspaces, w] }
       })
-      toast.success('Workspace criado')
+      toast.success('Espaço criado')
       return wid
     },
     [user, isCloud, withLocal, data],
@@ -205,12 +205,14 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         const w = data?.workspaces.find((x) => x.id === id)
         if (!w) return
         await fsUpsertWorkspace({ ...w, name: trimmed })
+        toast.success('Espaço renomeado')
         return
       }
       withLocal((prev) => ({
         ...prev,
         workspaces: prev.workspaces.map((w) => (w.id === id ? { ...w, name: trimmed } : w)),
       }))
+      toast.success('Espaço renomeado')
     },
     [user, isCloud, data?.workspaces, withLocal],
   )
@@ -234,7 +236,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
         return
       }
       withLocal((prev) => cascadeDeleteWorkspace(prev, id))
-      toast.success('Workspace removido')
+      toast.success('Espaço removido')
     },
     [user, isCloud, data, withLocal],
   )
