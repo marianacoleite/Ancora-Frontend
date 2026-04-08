@@ -19,6 +19,9 @@ import { clearLocalData } from '../services/local/storage'
 
 const LOCAL_UID_KEY = 'lampiao-local-uid'
 
+/** Definido antes do signOut para a tela de login mostrar o aviso de sessão encerrada. */
+export const PENDING_LOGOUT_BANNER_KEY = 'lampiao-pending-logout-banner'
+
 function getOrCreateLocalUid(): string {
   let id = localStorage.getItem(LOCAL_UID_KEY)
   if (!id) {
@@ -82,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     if (mode === 'firebase') {
+      sessionStorage.setItem(PENDING_LOGOUT_BANNER_KEY, '1')
       await signOut(getFirebaseAuth())
       return
     }

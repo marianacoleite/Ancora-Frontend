@@ -1,12 +1,12 @@
 import { motion } from 'framer-motion'
 import {
+  Anchor,
   ChevronLeft,
   Copy,
   LayoutGrid,
   LogOut,
   Pencil,
   Plus,
-  Sparkles,
   Trash2,
   UserPlus,
 } from 'lucide-react'
@@ -72,10 +72,10 @@ export function Sidebar({
         <div className="flex h-14 shrink-0 items-center gap-2 border-b border-subtle px-3">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-              <Sparkles className="h-4 w-4" />
+              <Anchor className="h-4 w-4" />
             </span>
             {!collapsed && (
-              <span className="truncate font-semibold tracking-tight text-primary-ink">Lampião</span>
+              <span className="truncate font-semibold tracking-tight text-primary-ink">Âncora</span>
             )}
           </div>
           <button
@@ -292,7 +292,7 @@ export function Sidebar({
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         title="Convidar pessoas"
-        description="Compartilhe o Lampião com o time. Com Firebase configurado, cada pessoa usa sua própria conta; no modo demo, use o mesmo navegador ou envie o link."
+        description="Compartilhe a Âncora com o time. Com Firebase configurado, cada pessoa usa sua própria conta; no modo demo, use o mesmo navegador ou envie o link."
       >
         <div className="flex flex-col gap-4">
           <Input
