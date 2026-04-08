@@ -1,6 +1,6 @@
 import { useLayoutEffect, useState, type ReactNode } from 'react'
 
-const STORAGE_KEY = 'lampiao-theme'
+const STORAGE_KEY = 'ancora-theme'
 
 function readTheme(): 'light' | 'dark' {
   const v = localStorage.getItem(STORAGE_KEY) as 'light' | 'dark' | null

@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useState } from 'react'
 
-const STORAGE_KEY = 'lampiao-theme'
+const STORAGE_KEY = 'ancora-theme'
 
 export type Theme = 'light' | 'dark'
 

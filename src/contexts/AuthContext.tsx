@@ -17,10 +17,10 @@ import {
 import { getFirebaseAuth, isFirebaseConfigured } from '../services/firebase/config'
 import { clearLocalData } from '../services/local/storage'
 
-const LOCAL_UID_KEY = 'lampiao-local-uid'
+const LOCAL_UID_KEY = 'ancora-local-uid'
 
 /** Definido antes do signOut para a tela de login mostrar o aviso de sessão encerrada. */
-export const PENDING_LOGOUT_BANNER_KEY = 'lampiao-pending-logout-banner'
+export const PENDING_LOGOUT_BANNER_KEY = 'ancora-pending-logout-banner'
 
 function getOrCreateLocalUid(): string {
   let id = localStorage.getItem(LOCAL_UID_KEY)
@@ -56,7 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (mode === 'local') {
       const uid = getOrCreateLocalUid()
-      setUser({ uid, email: 'demo@lampiao.local', isAnonymous: true })
+      setUser({ uid, email: 'demo@ancora.local', isAnonymous: true })
       setLoading(false)
       return
     }

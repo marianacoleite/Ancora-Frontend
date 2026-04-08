@@ -10,13 +10,11 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore'
 import type { AppData, Section, Subspace, Task, Workspace } from '../../types/models'
+import { FIRESTORE_COLLECTIONS } from '../../types/firestore'
 import { getFirebaseDb } from '../firebase/config'
 import { newId } from './id'
 
-const CW = 'lampiao_workspaces'
-const CS = 'lampiao_subspaces'
-const CSEC = 'lampiao_sections'
-const CT = 'lampiao_tasks'
+const { workspaces: CW, subspaces: CS, sections: CSEC, tasks: CT } = FIRESTORE_COLLECTIONS
 
 function mapWorkspace(id: string, d: Record<string, unknown>): Workspace {
   return {

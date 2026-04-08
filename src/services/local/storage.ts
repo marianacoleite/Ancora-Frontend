@@ -1,6 +1,6 @@
 import type { AppData } from '../../types/models'
 
-const KEY = 'lampiao-app-data-v1'
+const KEY = 'ancora-app-data-v1'
 
 export function loadLocalData(): AppData | null {
   try {
