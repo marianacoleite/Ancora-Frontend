@@ -25,6 +25,7 @@ import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import { Modal } from '../components/ui/Modal'
 import { Skeleton } from '../components/ui/Skeleton'
+import { TaskStatusSelect } from '../components/ui/TaskStatusSelect'
 import { useAppData } from '../contexts/AppDataContext'
 import type { TaskStatus } from '../types/models'
 import { cn } from '../lib/utils'
@@ -396,17 +397,15 @@ export function SubspacePage() {
               </select>
             </label>
           )}
-          <label className="text-xs font-medium text-secondary-ink">
+          <label className="block text-xs font-medium text-secondary-ink">
             Status
-            <select
-              className="mt-1 w-full rounded-2xl border border-subtle bg-[var(--surface-card)] px-4 py-3 text-sm"
-              value={taskStatus}
-              onChange={(e) => setTaskStatus(e.target.value as TaskStatus)}
-            >
-              <option value="pending">Pendente</option>
-              <option value="in_progress">Em andamento</option>
-              <option value="done">Concluído</option>
-            </select>
+            <div className="mt-1">
+              <TaskStatusSelect
+                variant="comfortable"
+                value={taskStatus}
+                onChange={(v) => setTaskStatus(v)}
+              />
+            </div>
           </label>
           <Input
             placeholder="Tags (separadas por vírgula)"

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import type { Task } from '../../types/models'
 import { cn } from '../../lib/utils'
 import { Avatar } from '../ui/Avatar'
-import { StatusBadge, TagChip, taskStatusSelectStyles } from '../ui/Badge'
+import { StatusBadge, TagChip } from '../ui/Badge'
+import { TaskStatusSelect } from '../ui/TaskStatusSelect'
 import { Input } from '../ui/Input'
 
 type TaskRowProps = {
@@ -96,19 +97,11 @@ export function TaskRow({
       )}
       <td className="px-3 py-3 align-middle">
         {onUpdateStatus ? (
-          <select
-            aria-label="Status"
+          <TaskStatusSelect
             value={task.status}
-            onChange={(e) => onUpdateStatus(task.id, e.target.value as Task['status'])}
-            className={cn(
-              'max-w-[160px] cursor-pointer rounded-xl border px-2 py-1.5 text-xs font-medium transition-colors',
-              taskStatusSelectStyles[task.status],
-            )}
-          >
-            <option value="pending">Pendente</option>
-            <option value="in_progress">Em andamento</option>
-            <option value="done">Concluído</option>
-          </select>
+            onChange={(status) => onUpdateStatus(task.id, status)}
+            variant="compact"
+          />
         ) : (
           <StatusBadge status={task.status} />
         )}
