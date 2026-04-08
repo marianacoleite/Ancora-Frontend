@@ -195,8 +195,8 @@ export function SubspacePage() {
           onSearchChange={setSearch}
         />
 
-        <div className="border-b border-subtle/80 px-4 md:px-10">
-          <div className="flex gap-1 overflow-x-auto pb-2">
+        <div className="px-4 pt-2 md:px-10">
+          <div className="flex gap-1.5 overflow-x-auto pb-3.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {subsInWs.map((s) => (
               <NavLink
                 key={s.id}
@@ -204,7 +204,7 @@ export function SubspacePage() {
                 onClick={() => ctx?.closeMobileSidebar?.()}
                 className={({ isActive }) =>
                   cn(
-                    'whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+                    'inline-flex items-center whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium transition-colors',
                     isActive
                       ? 'bg-primary/12 text-primary'
                       : 'text-secondary-ink hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
@@ -223,6 +223,7 @@ export function SubspacePage() {
               Subespaço
             </button>
           </div>
+          <div className="border-t border-subtle" aria-hidden />
         </div>
 
         <div className="mx-auto w-full max-w-6xl px-4 py-8 md:px-6">
