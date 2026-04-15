@@ -19,7 +19,7 @@ export function TasksTableShell({
             )}
             <th className="px-3 py-3">Status</th>
             <th className="hidden px-3 py-3 md:table-cell">Tags</th>
-            <th className="hidden px-3 py-3 sm:table-cell">Resp.</th>
+            <th className="hidden px-3 py-3 sm:table-cell">Responsável</th>
             <th className="hidden px-3 py-3 md:table-cell">Data</th>
             <th className="w-12 px-2 py-3" aria-hidden />
           </tr>

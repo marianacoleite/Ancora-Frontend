@@ -115,9 +115,12 @@ export function TaskRow({
           )}
         </div>
       </td>
-      <td className="hidden px-3 py-3 align-middle sm:table-cell">
+      <td className="hidden max-w-[220px] px-3 py-3 align-middle sm:table-cell">
         {task.assigneeName ? (
-          <Avatar name={task.assigneeName} />
+          <div className="flex min-w-0 items-center gap-2">
+            <Avatar name={task.assigneeName} className="shrink-0" />
+            <span className="min-w-0 break-words text-sm text-secondary-ink">{task.assigneeName}</span>
+          </div>
         ) : (
           <span className="text-xs text-secondary-ink">—</span>
         )}
