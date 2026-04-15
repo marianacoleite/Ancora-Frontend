@@ -21,5 +21,5 @@ export async function apiMe(): Promise<{ user: ApiAuthUser }> {
 }
 
 export async function apiLogout(): Promise<void> {
-  await apiRequest<void>('POST', paths.auth.logout, { json: {} })
+  await apiRequest<void>('POST', paths.auth.logout)
 }

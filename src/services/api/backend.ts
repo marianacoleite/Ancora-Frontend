@@ -36,3 +36,13 @@ export function getBackendRoot(): Promise<BackendRootResponse> {
 export function getBackendHealth(): Promise<BackendHealthResponse> {
   return fetchJson('/health')
 }
+
+/** `GET /health/supabase` — estado do cliente Supabase (backend). */
+export function getBackendHealthSupabase(): Promise<unknown> {
+  return fetchJson('/health/supabase')
+}
+
+/** `GET /health/db` — leitura de teste no banco (backend). */
+export function getBackendHealthDb(): Promise<unknown> {
+  return fetchJson('/health/db')
+}

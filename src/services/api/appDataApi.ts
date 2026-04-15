@@ -12,7 +12,7 @@ import type {
   PatchWorkspaceBody,
 } from './types'
 
-function normalizeAppData(raw: unknown): AppData {
+export function normalizeAppData(raw: unknown): AppData {
   const o = raw as Record<string, unknown>
   return {
     workspaces: Array.isArray(o.workspaces) ? (o.workspaces as Workspace[]) : [],

@@ -8,22 +8,28 @@ import { Input } from '../components/ui/Input'
 import { useAuth } from '../contexts/AuthContext'
 
 export function LoginPage() {
-  const { user, signIn } = useAuth()
+  const { user, signIn, signUp, mode } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState(() => import.meta.env.VITE_USUARIO ?? '')
   const [password, setPassword] = useState(() => import.meta.env.VITE_SENHA ?? '')
   const [loading, setLoading] = useState(false)
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login')
 
   if (user) {
     return <Navigate to="/" replace />
   }
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     try {
-      await signIn(email, password)
-      toast.success('Bem-vindo de volta')
+      if (mode === 'remote' && authTab === 'register') {
+        await signUp(email, password)
+        toast.success('Conta criada')
+      } else {
+        await signIn(email, password)
+        toast.success('Bem-vindo de volta')
+      }
       navigate('/')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Falha ao entrar')
@@ -49,10 +55,40 @@ export function LoginPage() {
             </span>
             <div>
               <h1 className="text-xl font-semibold tracking-tight text-primary-ink">Âncora</h1>
-              <p className="text-sm text-secondary-ink">Entre para acessar seus dados</p>
+              <p className="text-sm text-secondary-ink">
+                {mode === 'remote' && authTab === 'register'
+                  ? 'Crie sua conta para sincronizar com o servidor'
+                  : 'Entre para acessar seus dados'}
+              </p>
             </div>
           </div>
-          <form className="flex flex-col gap-4" onSubmit={handleLogin}>
+          {mode === 'remote' ? (
+            <div className="mb-4 flex gap-2 rounded-xl border border-subtle bg-[var(--surface-muted)]/50 p-1">
+              <button
+                type="button"
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  authTab === 'login'
+                    ? 'bg-surface-card text-primary-ink shadow-sm'
+                    : 'text-secondary-ink hover:text-primary-ink'
+                }`}
+                onClick={() => setAuthTab('login')}
+              >
+                Entrar
+              </button>
+              <button
+                type="button"
+                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  authTab === 'register'
+                    ? 'bg-surface-card text-primary-ink shadow-sm'
+                    : 'text-secondary-ink hover:text-primary-ink'
+                }`}
+                onClick={() => setAuthTab('register')}
+              >
+                Criar conta
+              </button>
+            </div>
+          ) : null}
+          <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
             <Input
               type="email"
               autoComplete="email"
@@ -70,7 +106,13 @@ export function LoginPage() {
               required
             />
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Entrando…' : 'Entrar'}
+              {loading
+                ? mode === 'remote' && authTab === 'register'
+                  ? 'Criando…'
+                  : 'Entrando…'
+                : mode === 'remote' && authTab === 'register'
+                  ? 'Criar conta'
+                  : 'Entrar'}
             </Button>
           </form>
         </div>
