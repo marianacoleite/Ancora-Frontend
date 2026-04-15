@@ -10,23 +10,22 @@ import {
 import { toast } from 'sonner'
 import type { AppData, Section, Subspace, Task, TaskStatus, Workspace } from '../types/models'
 import { useAuth } from './AuthContext'
-import { isFirebaseConfigured } from '../services/firebase/config'
 import {
-  createSectionRecord,
-  createSubspaceRecord,
-  createTaskRecord,
-  createWorkspaceRecord,
-  fsDeleteSection,
-  fsDeleteSubspace,
-  fsDeleteTask,
-  fsDeleteWorkspace,
-  fsUpdateTask,
-  fsUpsertSection,
-  fsUpsertSubspace,
-  fsUpsertTask,
-  fsUpsertWorkspace,
-  subscribeAppData,
-} from '../services/data/firestoreApi'
+  createSectionApi,
+  createSubspaceApi,
+  createTaskApi,
+  createWorkspaceApi,
+  deleteSectionApi,
+  deleteSubspaceApi,
+  deleteTaskApi,
+  deleteWorkspaceApi,
+  fetchAppData,
+  patchSectionApi,
+  patchSubspaceApi,
+  patchTaskApi,
+  patchWorkspaceApi,
+} from '../services/api/appDataApi'
+import { getAccessToken } from '../services/api/token'
 import { newId } from '../services/data/id'
 import { createSeedData } from '../services/local/demoData'
 import { loadLocalData, saveLocalData } from '../services/local/storage'
@@ -34,7 +33,7 @@ import { loadLocalData, saveLocalData } from '../services/local/storage'
 type AppDataContextValue = {
   data: AppData | null
   loading: boolean
-  /** Modo offline/local (sem Firebase configurado) */
+  /** true = localStorage; false = API + servidor */
   isLocal: boolean
   addWorkspace: (name: string) => Promise<string | null>
   renameWorkspace: (id: string, name: string) => Promise<void>
@@ -60,7 +59,18 @@ type AppDataContextValue = {
   updateTask: (
     id: string,
     patch: Partial<
-      Pick<Task, 'title' | 'status' | 'tags' | 'assigneeName' | 'dueDate' | 'sectionId' | 'order'>
+      Pick<
+        Task,
+        | 'title'
+        | 'status'
+        | 'tags'
+        | 'assigneeName'
+        | 'dueDate'
+        | 'sectionId'
+        | 'subspaceId'
+        | 'workspaceId'
+        | 'order'
+      >
     >,
   ) => Promise<void>
   deleteTask: (id: string) => Promise<void>
@@ -106,11 +116,15 @@ function cascadeDeleteSection(data: AppData, secId: string): AppData {
 }
 
 export function AppDataProvider({ children }: { children: ReactNode }) {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, mode } = useAuth()
+  const isLocal = mode === 'local'
   const [data, setData] = useState<AppData | null>(null)
   const [loading, setLoading] = useState(true)
-  const isCloud = isFirebaseConfigured()
-  const isLocal = !isCloud
+
+  const refreshRemote = useCallback(async () => {
+    const d = await fetchAppData()
+    setData(d)
+  }, [])
 
   useEffect(() => {
     if (authLoading) return
@@ -120,7 +134,7 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    if (!isCloud) {
+    if (isLocal) {
       let loaded = loadLocalData()
       if (!loaded || loaded.workspaces.length === 0) {
         loaded = createSeedData(user.uid)
@@ -131,20 +145,21 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       return
     }
 
+    if (!getAccessToken()) {
+      setData(null)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
-    const unsub = subscribeAppData(
-      user.uid,
-      (d) => {
-        setData(d)
-        setLoading(false)
-      },
-      (e) => {
-        toast.error(e.message)
-        setLoading(false)
-      },
-    )
-    return () => unsub()
-  }, [user, authLoading, isCloud])
+    fetchAppData()
+      .then(setData)
+      .catch((e: unknown) => {
+        toast.error(e instanceof Error ? e.message : String(e))
+        setData(null)
+      })
+      .finally(() => setLoading(false))
+  }, [user, authLoading, isLocal])
 
   useEffect(() => {
     if (isLocal && data && user) {
@@ -152,93 +167,90 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
     }
   }, [data, isLocal, user])
 
-  const withLocal = useCallback(
-    (fn: (prev: AppData) => AppData) => {
-      setData((prev) => {
-        if (!prev) return prev
-        return fn(prev)
-      })
-    },
-    [],
-  )
+  const withLocal = useCallback((fn: (prev: AppData) => AppData) => {
+    setData((prev) => {
+      if (!prev) return prev
+      return fn(prev)
+    })
+  }, [])
 
   const addWorkspace = useCallback(
     async (name: string): Promise<string | null> => {
       if (!user) return null
       const trimmed = name.trim()
       if (!trimmed) return null
-      if (isCloud) {
-        const order = data ? nextOrder(data.workspaces) : 0
-        const ws = createWorkspaceRecord(user.uid, trimmed, order)
-        try {
-          await fsUpsertWorkspace(ws)
-          toast.success('Espaço criado')
-          return ws.id
-        } catch (e) {
-          toast.error(String(e))
-          return null
-        }
+
+      if (isLocal) {
+        const wid = newId()
+        withLocal((prev) => {
+          const order = nextOrder(prev.workspaces)
+          const w: Workspace = {
+            id: wid,
+            name: trimmed,
+            userId: user.uid,
+            order,
+            createdAt: Date.now(),
+          }
+          return { ...prev, workspaces: [...prev.workspaces, w] }
+        })
+        toast.success('Espaço criado')
+        return wid
       }
-      const wid = newId()
-      withLocal((prev) => {
-        const order = nextOrder(prev.workspaces)
-        const w: Workspace = {
-          id: wid,
-          name: trimmed,
-          userId: user.uid,
-          order,
-          createdAt: Date.now(),
-        }
-        return { ...prev, workspaces: [...prev.workspaces, w] }
-      })
-      toast.success('Espaço criado')
-      return wid
+
+      try {
+        const order = data ? nextOrder(data.workspaces) : 0
+        const w = await createWorkspaceApi({ name: trimmed, order })
+        await refreshRemote()
+        toast.success('Espaço criado')
+        return w.id
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+        return null
+      }
     },
-    [user, isCloud, withLocal, data],
+    [user, isLocal, withLocal, data, refreshRemote],
   )
 
   const renameWorkspace = useCallback(
     async (id: string, name: string) => {
       const trimmed = name.trim()
       if (!trimmed || !user) return
-      if (isCloud) {
-        const w = data?.workspaces.find((x) => x.id === id)
-        if (!w) return
-        await fsUpsertWorkspace({ ...w, name: trimmed })
+      if (isLocal) {
+        withLocal((prev) => ({
+          ...prev,
+          workspaces: prev.workspaces.map((w) => (w.id === id ? { ...w, name: trimmed } : w)),
+        }))
         toast.success('Espaço renomeado')
         return
       }
-      withLocal((prev) => ({
-        ...prev,
-        workspaces: prev.workspaces.map((w) => (w.id === id ? { ...w, name: trimmed } : w)),
-      }))
-      toast.success('Espaço renomeado')
+      try {
+        await patchWorkspaceApi(id, { name: trimmed })
+        await refreshRemote()
+        toast.success('Espaço renomeado')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.workspaces, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const deleteWorkspace = useCallback(
     async (id: string) => {
       if (!user) return
-      if (isCloud) {
-        const ws = data?.workspaces.find((w) => w.id === id)
-        if (!ws) return
-        const subs = data?.subspaces.filter((s) => s.workspaceId === id) ?? []
-        const secs =
-          data?.sections.filter((s) => subs.some((sub) => sub.id === s.subspaceId)) ?? []
-        const tasks = data?.tasks.filter((t) => t.workspaceId === id) ?? []
-        await Promise.all([
-          ...tasks.map((t) => fsDeleteTask(t.id)),
-          ...secs.map((s) => fsDeleteSection(s.id)),
-          ...subs.map((s) => fsDeleteSubspace(s.id)),
-          fsDeleteWorkspace(id),
-        ])
+      if (isLocal) {
+        withLocal((prev) => cascadeDeleteWorkspace(prev, id))
+        toast.success('Espaço removido')
         return
       }
-      withLocal((prev) => cascadeDeleteWorkspace(prev, id))
-      toast.success('Espaço removido')
+      try {
+        await deleteWorkspaceApi(id)
+        await refreshRemote()
+        toast.success('Espaço removido')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const addSubspace = useCallback(
@@ -246,71 +258,77 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!user) return null
       const trimmed = name.trim()
       if (!trimmed) return null
-      if (isCloud) {
+      if (isLocal) {
+        const sid = newId()
+        withLocal((prev) => {
+          const subs = prev.subspaces.filter((s) => s.workspaceId === workspaceId)
+          const order = nextOrder(subs)
+          const row: Subspace = {
+            id: sid,
+            workspaceId,
+            userId: user.uid,
+            name: trimmed,
+            order,
+            createdAt: Date.now(),
+          }
+          return { ...prev, subspaces: [...prev.subspaces, row] }
+        })
+        toast.success('Subespaço criado')
+        return sid
+      }
+      try {
         const subs = data?.subspaces.filter((s) => s.workspaceId === workspaceId) ?? []
         const order = nextOrder(subs)
-        const s = createSubspaceRecord(user.uid, workspaceId, trimmed)
-        const row: Subspace = { ...s, order }
-        await fsUpsertSubspace(row)
+        const s = await createSubspaceApi({ workspaceId, name: trimmed, order })
+        await refreshRemote()
         toast.success('Subespaço criado')
-        return row.id
+        return s.id
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+        return null
       }
-      const sid = newId()
-      withLocal((prev) => {
-        const subs = prev.subspaces.filter((s) => s.workspaceId === workspaceId)
-        const order = nextOrder(subs)
-        const row: Subspace = {
-          id: sid,
-          workspaceId,
-          userId: user.uid,
-          name: trimmed,
-          order,
-          createdAt: Date.now(),
-        }
-        return { ...prev, subspaces: [...prev.subspaces, row] }
-      })
-      toast.success('Subespaço criado')
-      return sid
     },
-    [user, isCloud, data?.subspaces, withLocal],
+    [user, isLocal, withLocal, data?.subspaces, refreshRemote],
   )
 
   const renameSubspace = useCallback(
     async (id: string, name: string) => {
       const trimmed = name.trim()
       if (!trimmed || !user) return
-      if (isCloud) {
-        const s = data?.subspaces.find((x) => x.id === id)
-        if (!s) return
-        await fsUpsertSubspace({ ...s, name: trimmed })
+      if (isLocal) {
+        withLocal((prev) => ({
+          ...prev,
+          subspaces: prev.subspaces.map((s) => (s.id === id ? { ...s, name: trimmed } : s)),
+        }))
         return
       }
-      withLocal((prev) => ({
-        ...prev,
-        subspaces: prev.subspaces.map((s) => (s.id === id ? { ...s, name: trimmed } : s)),
-      }))
+      try {
+        await patchSubspaceApi(id, { name: trimmed })
+        await refreshRemote()
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.subspaces, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const deleteSubspace = useCallback(
     async (id: string) => {
       if (!user) return
-      if (isCloud) {
-        const secs = data?.sections.filter((s) => s.subspaceId === id) ?? []
-        const tasks = data?.tasks.filter((t) => t.subspaceId === id) ?? []
-        await Promise.all([
-          ...tasks.map((t) => fsDeleteTask(t.id)),
-          ...secs.map((s) => fsDeleteSection(s.id)),
-          fsDeleteSubspace(id),
-        ])
+      if (isLocal) {
+        withLocal((prev) => cascadeDeleteSubspace(prev, id))
         toast.success('Subespaço removido')
         return
       }
-      withLocal((prev) => cascadeDeleteSubspace(prev, id))
-      toast.success('Subespaço removido')
+      try {
+        await deleteSubspaceApi(id)
+        await refreshRemote()
+        toast.success('Subespaço removido')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const addSection = useCallback(
@@ -318,63 +336,75 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!user) return
       const trimmed = name.trim()
       if (!trimmed) return
-      if (isCloud) {
-        const secs = data?.sections.filter((s) => s.subspaceId === subspaceId) ?? []
-        const order = nextOrder(secs)
-        const s = createSectionRecord(user.uid, workspaceId, subspaceId, trimmed)
-        const row: Section = { ...s, order }
-        await fsUpsertSection(row)
+      if (isLocal) {
+        withLocal((prev) => {
+          const secs = prev.sections.filter((s) => s.subspaceId === subspaceId)
+          const order = nextOrder(secs)
+          const row: Section = {
+            id: newId(),
+            subspaceId,
+            workspaceId,
+            userId: user.uid,
+            name: trimmed,
+            order,
+            createdAt: Date.now(),
+          }
+          return { ...prev, sections: [...prev.sections, row] }
+        })
+        toast.success('Seção criada')
         return
       }
-      withLocal((prev) => {
-        const secs = prev.sections.filter((s) => s.subspaceId === subspaceId)
+      try {
+        const secs = data?.sections.filter((s) => s.subspaceId === subspaceId) ?? []
         const order = nextOrder(secs)
-        const row: Section = {
-          id: newId(),
-          subspaceId,
-          workspaceId,
-          userId: user.uid,
-          name: trimmed,
-          order,
-          createdAt: Date.now(),
-        }
-        return { ...prev, sections: [...prev.sections, row] }
-      })
-      toast.success('Seção criada')
+        await createSectionApi({ workspaceId, subspaceId, name: trimmed, order })
+        await refreshRemote()
+        toast.success('Seção criada')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.sections, withLocal],
+    [user, isLocal, withLocal, data?.sections, refreshRemote],
   )
 
   const renameSection = useCallback(
     async (id: string, name: string) => {
       const trimmed = name.trim()
       if (!trimmed || !user) return
-      if (isCloud) {
-        const s = data?.sections.find((x) => x.id === id)
-        if (!s) return
-        await fsUpsertSection({ ...s, name: trimmed })
+      if (isLocal) {
+        withLocal((prev) => ({
+          ...prev,
+          sections: prev.sections.map((s) => (s.id === id ? { ...s, name: trimmed } : s)),
+        }))
         return
       }
-      withLocal((prev) => ({
-        ...prev,
-        sections: prev.sections.map((s) => (s.id === id ? { ...s, name: trimmed } : s)),
-      }))
+      try {
+        await patchSectionApi(id, { name: trimmed })
+        await refreshRemote()
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.sections, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const deleteSection = useCallback(
     async (id: string) => {
       if (!user) return
-      if (isCloud) {
-        const tasks = data?.tasks.filter((t) => t.sectionId === id) ?? []
-        await Promise.all([...tasks.map((t) => fsDeleteTask(t.id)), fsDeleteSection(id)])
+      if (isLocal) {
+        withLocal((prev) => cascadeDeleteSection(prev, id))
+        toast.success('Seção removida')
         return
       }
-      withLocal((prev) => cascadeDeleteSection(prev, id))
-      toast.success('Seção removida')
+      try {
+        await deleteSectionApi(id)
+        await refreshRemote()
+        toast.success('Seção removida')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.tasks, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const addTask = useCallback(
@@ -393,94 +423,140 @@ export function AppDataProvider({ children }: { children: ReactNode }) {
       if (!user) return
       const title = input.title.trim()
       if (!title) return
-      if (isCloud) {
-        const inSection = data?.tasks.filter((t) => t.sectionId === sectionId) ?? []
-        const order = nextOrder(inSection)
-        const t = createTaskRecord(
-          user.uid,
-          workspaceId,
-          subspaceId,
-          sectionId,
-          title,
-          input.status,
-          input.tags,
-          input.assigneeName,
-          input.dueDate,
-        )
-        const row: Task = { ...t, order }
-        await fsUpsertTask(row)
+      if (isLocal) {
+        withLocal((prev) => {
+          const inSection = prev.tasks.filter((t) => t.sectionId === sectionId)
+          const order = nextOrder(inSection)
+          const row: Task = {
+            id: newId(),
+            sectionId,
+            subspaceId,
+            workspaceId,
+            userId: user.uid,
+            title,
+            status: input.status,
+            tags: input.tags,
+            assigneeName: input.assigneeName,
+            dueDate: input.dueDate,
+            order,
+            createdAt: Date.now(),
+          }
+          return { ...prev, tasks: [...prev.tasks, row] }
+        })
+        toast.success('Tarefa criada')
         return
       }
-      withLocal((prev) => {
-        const inSection = prev.tasks.filter((t) => t.sectionId === sectionId)
+      try {
+        const inSection = data?.tasks.filter((t) => t.sectionId === sectionId) ?? []
         const order = nextOrder(inSection)
-        const row: Task = {
-          id: newId(),
-          sectionId,
-          subspaceId,
+        await createTaskApi({
           workspaceId,
-          userId: user.uid,
+          subspaceId,
+          sectionId,
           title,
           status: input.status,
           tags: input.tags,
           assigneeName: input.assigneeName,
           dueDate: input.dueDate,
           order,
-          createdAt: Date.now(),
-        }
-        return { ...prev, tasks: [...prev.tasks, row] }
-      })
-      toast.success('Tarefa criada')
+        })
+        await refreshRemote()
+        toast.success('Tarefa criada')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, data?.tasks, withLocal],
+    [user, isLocal, withLocal, data?.tasks, refreshRemote],
   )
 
   const updateTask = useCallback(
     async (
       id: string,
       patch: Partial<
-        Pick<Task, 'title' | 'status' | 'tags' | 'assigneeName' | 'dueDate' | 'sectionId' | 'order'>
+        Pick<
+          Task,
+          | 'title'
+          | 'status'
+          | 'tags'
+          | 'assigneeName'
+          | 'dueDate'
+          | 'sectionId'
+          | 'subspaceId'
+          | 'workspaceId'
+          | 'order'
+        >
       >,
     ) => {
       if (!user) return
-      if (isCloud) {
-        await fsUpdateTask(id, patch)
+      if (isLocal) {
+        withLocal((prev) => ({
+          ...prev,
+          tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        }))
         return
       }
-      withLocal((prev) => ({
-        ...prev,
-        tasks: prev.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)),
-      }))
+      try {
+        await patchTaskApi(id, patch)
+        await refreshRemote()
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [user, isCloud, withLocal],
+    [user, isLocal, withLocal, refreshRemote],
   )
 
   const deleteTask = useCallback(
     async (id: string) => {
-      if (isCloud) {
-        await fsDeleteTask(id)
+      if (isLocal) {
+        withLocal((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }))
+        toast.success('Tarefa removida')
         return
       }
-      withLocal((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== id) }))
-      toast.success('Tarefa removida')
+      try {
+        await deleteTaskApi(id)
+        await refreshRemote()
+        toast.success('Tarefa removida')
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [isCloud, withLocal],
+    [isLocal, withLocal, refreshRemote],
   )
 
   const moveTaskToSection = useCallback(
     async (taskId: string, newSectionId: string, newOrder: number) => {
-      if (isCloud) {
-        await fsUpdateTask(taskId, { sectionId: newSectionId, order: newOrder })
+      const sec = data?.sections.find((s) => s.id === newSectionId)
+      if (isLocal) {
+        withLocal((prev) => {
+          const s = prev.sections.find((x) => x.id === newSectionId)
+          return {
+            ...prev,
+            tasks: prev.tasks.map((t) =>
+              t.id === taskId
+                ? {
+                    ...t,
+                    sectionId: newSectionId,
+                    order: newOrder,
+                    ...(s ? { subspaceId: s.subspaceId, workspaceId: s.workspaceId } : {}),
+                  }
+                : t,
+            ),
+          }
+        })
         return
       }
-      withLocal((prev) => ({
-        ...prev,
-        tasks: prev.tasks.map((t) =>
-          t.id === taskId ? { ...t, sectionId: newSectionId, order: newOrder } : t,
-        ),
-      }))
+      try {
+        await patchTaskApi(taskId, {
+          sectionId: newSectionId,
+          order: newOrder,
+          ...(sec ? { subspaceId: sec.subspaceId, workspaceId: sec.workspaceId } : {}),
+        })
+        await refreshRemote()
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : String(e))
+      }
     },
-    [isCloud, withLocal],
+    [isLocal, withLocal, data?.sections, refreshRemote],
   )
 
   const value = useMemo(

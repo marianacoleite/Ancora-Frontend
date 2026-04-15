@@ -1,0 +1,512 @@
+openapi: 3.0.3
+info:
+  title: Âncora API
+  description: |
+    Contrato HTTP esperado pelo frontend (`src/services/api/`).
+    Base path relativo à URL do servidor: `/api/v1`.
+    Rotas autenticadas usam cabeçalho `Authorization: Bearer <JWT>`.
+  version: 1.0.0
+
+servers:
+  - url: /api/v1
+    description: Caminho relativo (prefixo fixo no cliente)
+
+tags:
+  - name: auth
+  - name: app-data
+  - name: workspaces
+  - name: subspaces
+  - name: sections
+  - name: tasks
+
+paths:
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginBody'
+      responses:
+        '200':
+          description: JWT e utilizador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/register:
+    post:
+      tags: [auth]
+      summary: Registo
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginBody'
+      responses:
+        '200':
+          description: JWT e utilizador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+
+  /auth/me:
+    get:
+      tags: [auth]
+      summary: Sessão atual
+      responses:
+        '200':
+          description: Utilizador autenticado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout (opcional)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '204':
+          description: Sem corpo
+
+  /app-data:
+    get:
+      tags: [app-data]
+      summary: Snapshot completo (workspaces, subspaces, sections, tasks)
+      responses:
+        '200':
+          description: Dados do utilizador
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppData'
+
+  /workspaces:
+    post:
+      tags: [workspaces]
+      summary: Criar workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWorkspaceBody'
+      responses:
+        '200':
+          description: Workspace criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+
+  /workspaces/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [workspaces]
+      summary: Atualizar workspace
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchWorkspaceBody'
+      responses:
+        '200':
+          description: Workspace atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+    delete:
+      tags: [workspaces]
+      summary: Eliminar workspace (cascata recomendada no servidor)
+      responses:
+        '204':
+          description: Sem corpo
+
+  /subspaces:
+    post:
+      tags: [subspaces]
+      summary: Criar subespaço
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSubspaceBody'
+      responses:
+        '200':
+          description: Subespaço criado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subspace'
+
+  /subspaces/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [subspaces]
+      summary: Atualizar subespaço
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchSubspaceBody'
+      responses:
+        '200':
+          description: Subespaço atualizado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subspace'
+    delete:
+      tags: [subspaces]
+      summary: Eliminar subespaço
+      responses:
+        '204':
+          description: Sem corpo
+
+  /sections:
+    post:
+      tags: [sections]
+      summary: Criar secção
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSectionBody'
+      responses:
+        '200':
+          description: Secção criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+
+  /sections/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [sections]
+      summary: Atualizar secção
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchSectionBody'
+      responses:
+        '200':
+          description: Secção atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Section'
+    delete:
+      tags: [sections]
+      summary: Eliminar secção
+      responses:
+        '204':
+          description: Sem corpo
+
+  /tasks:
+    post:
+      tags: [tasks]
+      summary: Criar tarefa
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskBody'
+      responses:
+        '200':
+          description: Tarefa criada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{id}:
+    parameters:
+      - $ref: '#/components/parameters/IdPath'
+    patch:
+      tags: [tasks]
+      summary: Atualizar tarefa (campos parciais)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTaskBody'
+      responses:
+        '200':
+          description: Tarefa atualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      tags: [tasks]
+      summary: Eliminar tarefa
+      responses:
+        '204':
+          description: Sem corpo
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdPath:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+
+  schemas:
+    LoginBody:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    AuthUser:
+      type: object
+      required: [id, email]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token:
+          type: string
+        user:
+          $ref: '#/components/schemas/AuthUser'
+
+    MeResponse:
+      type: object
+      required: [user]
+      properties:
+        user:
+          $ref: '#/components/schemas/AuthUser'
+
+    TaskStatus:
+      type: string
+      enum: [pending, in_progress, done]
+
+    Workspace:
+      type: object
+      required: [id, name, userId, order, createdAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        userId: { type: string }
+        order: { type: number }
+        createdAt: { type: number }
+
+    Subspace:
+      type: object
+      required: [id, workspaceId, userId, name, order, createdAt]
+      properties:
+        id: { type: string }
+        workspaceId: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        order: { type: number }
+        createdAt: { type: number }
+
+    Section:
+      type: object
+      required: [id, subspaceId, workspaceId, userId, name, order, createdAt]
+      properties:
+        id: { type: string }
+        subspaceId: { type: string }
+        workspaceId: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        order: { type: number }
+        createdAt: { type: number }
+
+    Task:
+      type: object
+      required:
+        - id
+        - sectionId
+        - subspaceId
+        - workspaceId
+        - userId
+        - title
+        - status
+        - tags
+        - assigneeName
+        - dueDate
+        - order
+        - createdAt
+      properties:
+        id: { type: string }
+        sectionId: { type: string }
+        subspaceId: { type: string }
+        workspaceId: { type: string }
+        userId: { type: string }
+        title: { type: string }
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        tags:
+          type: array
+          items: { type: string }
+        assigneeName:
+          nullable: true
+          type: string
+        dueDate:
+          nullable: true
+          type: string
+        order: { type: number }
+        createdAt: { type: number }
+
+    AppData:
+      type: object
+      required: [workspaces, subspaces, sections, tasks]
+      properties:
+        workspaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Workspace'
+        subspaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subspace'
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Section'
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+
+    CreateWorkspaceBody:
+      type: object
+      required: [name, order]
+      properties:
+        name: { type: string }
+        order: { type: number }
+
+    PatchWorkspaceBody:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    CreateSubspaceBody:
+      type: object
+      required: [workspaceId, name, order]
+      properties:
+        workspaceId: { type: string }
+        name: { type: string }
+        order: { type: number }
+
+    PatchSubspaceBody:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    CreateSectionBody:
+      type: object
+      required: [workspaceId, subspaceId, name, order]
+      properties:
+        workspaceId: { type: string }
+        subspaceId: { type: string }
+        name: { type: string }
+        order: { type: number }
+
+    PatchSectionBody:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    CreateTaskBody:
+      type: object
+      required:
+        - workspaceId
+        - subspaceId
+        - sectionId
+        - title
+        - status
+        - tags
+        - assigneeName
+        - dueDate
+        - order
+      properties:
+        workspaceId: { type: string }
+        subspaceId: { type: string }
+        sectionId: { type: string }
+        title: { type: string }
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        tags:
+          type: array
+          items: { type: string }
+        assigneeName:
+          nullable: true
+          type: string
+        dueDate:
+          nullable: true
+          type: string
+        order: { type: number }
+
+    PatchTaskBody:
+      type: object
+      properties:
+        title: { type: string }
+        status:
+          $ref: '#/components/schemas/TaskStatus'
+        tags:
+          type: array
+          items: { type: string }
+        assigneeName:
+          nullable: true
+          type: string
+        dueDate:
+          nullable: true
+          type: string
+        order: { type: number }
+        sectionId: { type: string }
+        subspaceId: { type: string }
+        workspaceId: { type: string }
+
+security:
+  - bearerAuth: []

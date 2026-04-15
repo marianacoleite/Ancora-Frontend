@@ -7,6 +7,8 @@ import {
   LogOut,
   Pencil,
   Plus,
+  RefreshCw,
+  Server,
   Trash2,
   UserPlus,
 } from 'lucide-react'
@@ -14,6 +16,7 @@ import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { toast } from 'sonner'
 import { useAuth } from '../../contexts/AuthContext'
+import { useBackend } from '../../contexts/BackendContext'
 import { cn } from '../../lib/utils'
 import type { Workspace } from '../../types/models'
 import { Button } from '../ui/Button'
@@ -42,6 +45,8 @@ export function Sidebar({
   onNavigate,
 }: SidebarProps) {
   const { user, logout, mode } = useAuth()
+  const { configured: backendOn, status: backendStatus, errorMessage: backendErr, refetch: refetchBackend } =
+    useBackend()
   const location = useLocation()
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
@@ -193,6 +198,70 @@ export function Sidebar({
           </Button>
         </div>
 
+        {backendOn && (
+          <div
+            className={cn(
+              'shrink-0 border-t border-subtle px-3 py-2',
+              collapsed && 'flex justify-center',
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => void refetchBackend()}
+              className={cn(
+                'flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-xs transition-colors hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
+                collapsed && 'w-auto justify-center px-2',
+              )}
+              title={
+                backendErr
+                  ? `${backendErr} — clique para tentar de novo`
+                  : 'Estado do servidor Express — clique para atualizar'
+              }
+            >
+              <Server className="h-3.5 w-3.5 shrink-0 text-secondary-ink" />
+              {!collapsed && (
+                <>
+                  <span className="min-w-0 flex-1 truncate text-secondary-ink">
+                    {backendStatus === 'checking' && 'A ligar ao servidor…'}
+                    {backendStatus === 'ok' && 'Servidor online'}
+                    {backendStatus === 'error' && 'Servidor inacessível'}
+                    {backendStatus === 'idle' && 'Servidor'}
+                  </span>
+                  <span
+                    className={cn(
+                      'h-2 w-2 shrink-0 rounded-full',
+                      backendStatus === 'checking' && 'animate-pulse bg-amber-500',
+                      backendStatus === 'ok' && 'bg-emerald-500',
+                      backendStatus === 'error' && 'bg-red-500',
+                      backendStatus === 'idle' && 'bg-secondary-ink/40',
+                    )}
+                    aria-hidden
+                  />
+                  <RefreshCw
+                    className={cn(
+                      'h-3 w-3 shrink-0 text-secondary-ink opacity-70',
+                      backendStatus === 'checking' && 'animate-spin',
+                    )}
+                    aria-hidden
+                  />
+                </>
+              )}
+              {collapsed && (
+                <span
+                  className={cn(
+                    'h-2 w-2 shrink-0 rounded-full',
+                    backendStatus === 'checking' && 'animate-pulse bg-amber-500',
+                    backendStatus === 'ok' && 'bg-emerald-500',
+                    backendStatus === 'error' && 'bg-red-500',
+                    backendStatus === 'idle' && 'bg-secondary-ink/40',
+                  )}
+                  aria-hidden
+                />
+              )}
+            </button>
+          </div>
+        )}
+
         <div className="shrink-0 border-t border-subtle p-3">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-slate-200/80 text-sm font-semibold text-slate-700 dark:bg-slate-600/80 dark:text-slate-100">
@@ -201,7 +270,7 @@ export function Sidebar({
             {!collapsed && (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-primary-ink">
-                  {mode === 'local' ? 'Modo demo' : 'Conta'}
+                  {mode === 'local' ? 'Dados locais' : 'Conta'}
                 </p>
                 <p className="truncate text-xs text-secondary-ink">{user?.email}</p>
               </div>
@@ -292,7 +361,7 @@ export function Sidebar({
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
         title="Convidar pessoas"
-        description="Compartilhe a Âncora com o time. Com Firebase configurado, cada pessoa usa sua própria conta; no modo demo, use o mesmo navegador ou envie o link."
+        description="Compartilhe a Âncora com o time enviando o link do app. Com conta no servidor, cada pessoa vê os seus espaços após entrar."
       >
         <div className="flex flex-col gap-4">
           <Input

@@ -7,29 +7,11 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import {
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  signOut,
-  type User,
-} from 'firebase/auth'
-import { getFirebaseAuth, isFirebaseConfigured } from '../services/firebase/config'
-import { clearLocalData } from '../services/local/storage'
 
-const LOCAL_UID_KEY = 'ancora-local-uid'
-
-/** Definido antes do signOut para a tela de login mostrar o aviso de sessão encerrada. */
-export const PENDING_LOGOUT_BANNER_KEY = 'ancora-pending-logout-banner'
-
-function getOrCreateLocalUid(): string {
-  let id = localStorage.getItem(LOCAL_UID_KEY)
-  if (!id) {
-    id = `local_${crypto.randomUUID().slice(0, 8)}`
-    localStorage.setItem(LOCAL_UID_KEY, id)
-  }
-  return id
-}
+const ADMIN_EMAIL = 'admancora@ancora.com'
+const ADMIN_PASSWORD = 'flowup'
+const ADMIN_UID = 'ancora_admin'
+const SESSION_AUTH_KEY = 'ancora-authenticated'
 
 export type AuthUser = {
   uid: string
@@ -40,7 +22,7 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null
   loading: boolean
-  mode: 'firebase' | 'local'
+  mode: 'local'
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
@@ -51,48 +33,36 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
-  const mode: 'firebase' | 'local' = isFirebaseConfigured() ? 'firebase' : 'local'
+  const mode: 'local' = 'local'
 
   useEffect(() => {
-    if (mode === 'local') {
-      const uid = getOrCreateLocalUid()
-      setUser({ uid, email: 'demo@ancora.local', isAnonymous: true })
+    const isAuthenticated = sessionStorage.getItem(SESSION_AUTH_KEY) === '1'
+    if (!isAuthenticated) {
+      setUser(null)
       setLoading(false)
       return
     }
-
-    const auth = getFirebaseAuth()
-    const unsub = onAuthStateChanged(auth, (u: User | null) => {
-      if (!u) {
-        setUser(null)
-      } else {
-        setUser({ uid: u.uid, email: u.email, isAnonymous: u.isAnonymous })
-      }
-      setLoading(false)
-    })
-    return () => unsub()
-  }, [mode])
+    setUser({ uid: ADMIN_UID, email: ADMIN_EMAIL, isAnonymous: false })
+    setLoading(false)
+  }, [])
 
   const signIn = useCallback(async (email: string, password: string) => {
-    if (mode !== 'firebase') return
-    await signInWithEmailAndPassword(getFirebaseAuth(), email, password)
-  }, [mode])
+    if (email.trim().toLowerCase() !== ADMIN_EMAIL || password !== ADMIN_PASSWORD) {
+      throw new Error('Credenciais inválidas')
+    }
+    sessionStorage.setItem(SESSION_AUTH_KEY, '1')
+    setUser({ uid: ADMIN_UID, email: ADMIN_EMAIL, isAnonymous: false })
+  }, [])
 
-  const signUp = useCallback(async (email: string, password: string) => {
-    if (mode !== 'firebase') return
-    await createUserWithEmailAndPassword(getFirebaseAuth(), email, password)
-  }, [mode])
+  const signUp = useCallback(async (_email: string, _password: string) => {
+    throw new Error('Cadastro desativado. Use as credenciais de administrador.')
+  }, [])
 
   const logout = useCallback(async () => {
-    if (mode === 'firebase') {
-      sessionStorage.setItem(PENDING_LOGOUT_BANNER_KEY, '1')
-      await signOut(getFirebaseAuth())
-      return
-    }
-    localStorage.removeItem(LOCAL_UID_KEY)
-    clearLocalData()
-    window.location.assign('/')
-  }, [mode])
+    sessionStorage.removeItem(SESSION_AUTH_KEY)
+    setUser(null)
+    window.location.assign('/login')
+  }, [])
 
   const value = useMemo(
     () => ({ user, loading, mode, signIn, signUp, logout }),

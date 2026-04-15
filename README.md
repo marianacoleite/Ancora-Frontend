@@ -9,7 +9,7 @@
 - **Hierarquia clara:** espaços de trabalho → subespaços → seções → tarefas.
 - **Duas formas de ver o mesmo board:** agrupado (estilo Kanban) ou tabela.
 - **Arrastar e soltar** para reordenar e mudar status com fluidez.
-- **Dois modos de operação:** demo instantânea no navegador ou **Firebase** (Auth + Firestore) para time e backup na nuvem.
+- **Dois modos de operação:** demo instantânea no navegador (dados em `localStorage`) ou **backend** com login e API quando `VITE_BACKEND_URL` estiver definido.
 - **Interface moderna:** tema claro/escuro, animações leves e feedback com toasts.
 
 ---
@@ -21,7 +21,7 @@
 | UI | React 19, TypeScript, Tailwind CSS 4 |
 | Build | Vite 8 |
 | Roteamento | React Router 7 |
-| Backend opcional | Firebase (Authentication + Firestore) |
+| Backend opcional | API HTTP (Express) + JWT |
 | Drag & drop | dnd-kit |
 | Motion | Framer Motion |
 | Ícones | Lucide React |
@@ -60,28 +60,25 @@ npm run preview   # testa o build localmente
 
 ---
 
-## Firebase (opcional)
+## Variáveis de ambiente
 
-Sem configuração, o app usa **modo demo**: dados no `localStorage` do navegador, sem login.
+Copie `.env.example` para `.env` e ajuste.
 
-Para **conta, login e dados na nuvem**:
+| Variável | Descrição |
+|----------|-----------|
+| `VITE_BACKEND_URL` | URL base do backend (Express). Com ela, a app usa `/api/v1` e JWT em `sessionStorage`; sem ela, modo local (`localStorage`). |
+| `VITE_USUARIO` | (Opcional) E-mail de login pré-preenchido em desenvolvimento. |
+| `VITE_SENHA` | (Opcional) Senha pré-preenchida em desenvolvimento — **não** uses credenciais reais em produção; variáveis `VITE_*` ficam expostas no bundle do cliente. |
 
-1. Crie um projeto no [Firebase Console](https://console.firebase.google.com/).
-2. Ative **Authentication** (e-mail/senha) e crie o banco **Firestore**.
-3. Copie `.env.example` para `.env.local` e preencha as variáveis do seu app (Project settings → Your apps).
+Ao arrancar com backend, a app pode fazer `GET /health` e mostrar na barra lateral **Servidor online** ou **inacessível**.
 
-```env
-VITE_FIREBASE_API_KEY=
-VITE_FIREBASE_AUTH_DOMAIN=
-VITE_FIREBASE_PROJECT_ID=
-VITE_FIREBASE_STORAGE_BUCKET=
-VITE_FIREBASE_MESSAGING_SENDER_ID=
-VITE_FIREBASE_APP_ID=
-```
+No servidor, o CORS costuma depender de `CORS_ORIGIN`; inclui o origin do Vite (ex.: `http://localhost:5173`).
 
-Reinicie o servidor de desenvolvimento após alterar o `.env.local`.
+As funções de API estão em `src/services/api/` (`backend.ts`, `authApi.ts`, etc.).
 
-> **Dica:** com Firebase ativo, a rota `/login` passa a ser usada para entrar ou criar conta. No modo demo, o login é ignorado e você cai direto na aplicação.
+Reinicie o servidor de desenvolvimento após alterar o `.env`.
+
+> **Dica:** sem `VITE_BACKEND_URL`, o app usa modo demo e o login pode ser ignorado conforme a configuração da aplicação.
 
 ---
 
@@ -102,7 +99,7 @@ src/
   components/     # Layout (sidebar, navbar), UI, tarefas, seções
   contexts/       # Auth e dados da aplicação
   pages/          # Rotas (login, subespaço, redirects)
-  services/       # Firebase, API Firestore, armazenamento local
+  services/       # API HTTP, armazenamento local
   types/          # Modelos TypeScript
 public/
   favicon.svg

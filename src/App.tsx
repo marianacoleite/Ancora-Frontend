@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppDataProvider } from './contexts/AppDataContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { BackendProvider } from './contexts/BackendContext'
 import { AppShell } from './components/layout/AppShell'
 import { ThemeBootstrap } from './components/layout/ThemeProvider'
 import { HomeRedirect } from './pages/HomeRedirect'
@@ -10,8 +11,8 @@ import { SubspacePage } from './pages/SubspacePage'
 import { WorkspaceRedirect } from './pages/WorkspaceRedirect'
 import { Skeleton } from './components/ui/Skeleton'
 
-function FirebaseGate({ children }: { children: ReactNode }) {
-  const { user, loading, mode } = useAuth()
+function AppGate({ children }: { children: ReactNode }) {
+  const { user, loading } = useAuth()
 
   if (loading) {
     return (
@@ -21,7 +22,7 @@ function FirebaseGate({ children }: { children: ReactNode }) {
     )
   }
 
-  if (mode === 'firebase' && !user) {
+  if (!user) {
     return <Navigate to="/login" replace />
   }
 
@@ -31,25 +32,27 @@ function FirebaseGate({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <ThemeBootstrap>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route
-            element={
-              <FirebaseGate>
-                <AppDataProvider>
-                  <AppShell />
-                </AppDataProvider>
-              </FirebaseGate>
-            }
-          >
-            <Route index element={<HomeRedirect />} />
-            <Route path="w/:workspaceId" element={<WorkspaceRedirect />} />
-            <Route path="w/:workspaceId/s/:subspaceId" element={<SubspacePage />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
+      <BackendProvider>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              element={
+                <AppGate>
+                  <AppDataProvider>
+                    <AppShell />
+                  </AppDataProvider>
+                </AppGate>
+              }
+            >
+              <Route index element={<HomeRedirect />} />
+              <Route path="w/:workspaceId" element={<WorkspaceRedirect />} />
+              <Route path="w/:workspaceId/s/:subspaceId" element={<SubspacePage />} />
+            </Route>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </BackendProvider>
     </ThemeBootstrap>
   )
 }

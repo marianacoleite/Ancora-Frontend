@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./contracts": "./contracts/index.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -24,7 +27,6 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "clsx": "^2.1.1",
-    "firebase": "^12.11.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
